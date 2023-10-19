@@ -153,28 +153,6 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
   };
 
   //Biconomy setup
-
-  // const biconomySmartAccountConfig: BiconomySmartAccountConfig = {
-  //   signer: signer as ethers.Signer,
-  //   chainId: ChainId.POLYGON_ZKEVM_TESTNET, //POLYGON_ZKEVM_TESTNET  // POLYGON_MUMBAI
-  //   bundler: bundler,
-  //   paymaster: paymaster,
-  // };
-
-  //   async function createAccount() {
-  //     const biconomyAccount = new BiconomySmartAccount(
-  //       biconomySmartAccountConfig
-  //     );
-  //     const biconomySmartAccount = await biconomyAccount.init();
-  //     console.log("owner: ", biconomySmartAccount.owner);
-  //     console.log(
-  //       "address: ",
-  //       await biconomySmartAccount.getSmartAccountAddress()
-  //     );
-  //  //   console.log("balances: ", await biconomySmartAccount.getAllTokenBalances({ chainId: ChainId.POLYGON_ZKEVM_TESTNET, eoaAddress: biconomySmartAccount.owner, tokenAddresses:[]}))
-  //     return biconomyAccount;
-  //   }
-
   async function createAccount() {
     const ownerShipModule = await ECDSAOwnershipValidationModule.create({
       signer: signer as ethers.Signer,
