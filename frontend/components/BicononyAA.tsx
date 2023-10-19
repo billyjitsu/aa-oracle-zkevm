@@ -176,8 +176,8 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
   //   }
 
   async function createAccount() {
-    const moduleInstance = await ECDSAOwnershipValidationModule.create({
-      signer: wallet,
+    const ownerShipModule = await ECDSAOwnershipValidationModule.create({
+      signer: signer as ethers.Signer,
       moduleAddress: DEFAULT_ECDSA_OWNERSHIP_MODULE,
     });
 
@@ -186,8 +186,8 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
       bundler: bundler,
       paymaster: paymaster,
       entryPointAddress: DEFAULT_ENTRYPOINT_ADDRESS,
-      defaultValidationModule: moduleInstance,
-      activeValidationModule: moduleInstance,
+      defaultValidationModule: ownerShipModule,
+      activeValidationModule: ownerShipModule,
     });
     console.log("owner: ", biconomySmartAccount.owner);
     console.log("address: ", await biconomySmartAccount.getAccountAddress());
