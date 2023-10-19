@@ -35,10 +35,15 @@ import {
 } from "@biconomy/paymaster";
 import { ChainId } from "@biconomy/core-types";
 import {
-  BiconomySmartAccount,
-  BiconomySmartAccountConfig,
+  BiconomySmartAccountV2,
   DEFAULT_ENTRYPOINT_ADDRESS,
 } from "@biconomy/account";
+// This is how you create ECDSA module instance in your dapp's
+import {
+  ECDSAOwnershipValidationModule,
+  DEFAULT_ECDSA_OWNERSHIP_MODULE,
+} from "@biconomy/modules";
+
 //Ethers.js adapter
 import { useEthersProvider, useEthersSigner } from "./ethers";
 
@@ -69,10 +74,17 @@ const calcStaToEth = (sta: number, price: number) => {
 //Biconomy Setups
 const bundler: IBundler = new Bundler({
   //bundlerUrl: "https://bundler.biconomy.io/api/v2/80001/abc",
-  bundlerUrl: "https://bundler.biconomy.io/api/v2/1442/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44",
+  bundlerUrl:
+    "https://bundler.biconomy.io/api/v2/1442/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44",
   chainId: ChainId.POLYGON_ZKEVM_TESTNET, // POLYGON_ZKEVM_TESTNET  //POLYGON_MUMBAI
   entryPointAddress: DEFAULT_ENTRYPOINT_ADDRESS,
 });
+
+// const bundler: IBundler = new Bundler({
+//   bundlerUrl: 'https://bundler.biconomy.io/api/v2/{CHAINID}/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44',
+//   chainId: ChainId.POLYGON_MAINNET,
+//   entryPointAddress: '',
+// })
 
 const paymaster: IPaymaster = new BiconomyPaymaster({
   paymasterUrl:
@@ -140,31 +152,52 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     // handleWithdrawEth(data.STA);
   };
 
-  const biconomySmartAccountConfig: BiconomySmartAccountConfig = {
-    signer: signer as ethers.Signer,
-    chainId: ChainId.POLYGON_ZKEVM_TESTNET, //POLYGON_ZKEVM_TESTNET  // POLYGON_MUMBAI
-    bundler: bundler,
-    paymaster: paymaster,
-  };
+  //Biconomy setup
+
+  // const biconomySmartAccountConfig: BiconomySmartAccountConfig = {
+  //   signer: signer as ethers.Signer,
+  //   chainId: ChainId.POLYGON_ZKEVM_TESTNET, //POLYGON_ZKEVM_TESTNET  // POLYGON_MUMBAI
+  //   bundler: bundler,
+  //   paymaster: paymaster,
+  // };
+
+  //   async function createAccount() {
+  //     const biconomyAccount = new BiconomySmartAccount(
+  //       biconomySmartAccountConfig
+  //     );
+  //     const biconomySmartAccount = await biconomyAccount.init();
+  //     console.log("owner: ", biconomySmartAccount.owner);
+  //     console.log(
+  //       "address: ",
+  //       await biconomySmartAccount.getSmartAccountAddress()
+  //     );
+  //  //   console.log("balances: ", await biconomySmartAccount.getAllTokenBalances({ chainId: ChainId.POLYGON_ZKEVM_TESTNET, eoaAddress: biconomySmartAccount.owner, tokenAddresses:[]}))
+  //     return biconomyAccount;
+  //   }
 
   async function createAccount() {
-    const biconomyAccount = new BiconomySmartAccount(
-      biconomySmartAccountConfig
-    );
-    const biconomySmartAccount = await biconomyAccount.init();
+    const moduleInstance = await ECDSAOwnershipValidationModule.create({
+      signer: wallet,
+      moduleAddress: DEFAULT_ECDSA_OWNERSHIP_MODULE,
+    });
+
+    let biconomySmartAccount = await BiconomySmartAccountV2.create({
+      chainId: ChainId.POLYGON_MUMBAI, // or any supported chain of your choice
+      bundler: bundler,
+      paymaster: paymaster,
+      entryPointAddress: DEFAULT_ENTRYPOINT_ADDRESS,
+      defaultValidationModule: moduleInstance,
+      activeValidationModule: moduleInstance,
+    });
     console.log("owner: ", biconomySmartAccount.owner);
-    console.log(
-      "address: ",
-      await biconomySmartAccount.getSmartAccountAddress()
-    );
- //   console.log("balances: ", await biconomySmartAccount.getAllTokenBalances({ chainId: ChainId.POLYGON_ZKEVM_TESTNET, eoaAddress: biconomySmartAccount.owner, tokenAddresses:[]}))
-    return biconomyAccount;
+    console.log("address: ", await biconomySmartAccount.getAccountAddress());
+    return biconomySmartAccount;
   }
 
   async function sponsoredTransaction() {
     // We setup the tx for
-    console.log("signer: ", signer)
-    console.log("creating account...")
+    console.log("signer: ", signer);
+    console.log("creating account...");
     const smartAccount = await createAccount();
 
     const scwAddress = await smartAccount.getSmartAccountAddress(); // do we need this ?
@@ -178,25 +211,28 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     const encodedData = contract.interface.encodeFunctionData(fragment);
     console.log(encodedData);
 
-    console.log("Building transaction...")
+    console.log("Building transaction...");
     // NEED TO FUND THE SMART ACCOUNT WITH ETH TO DEPOSIT COLLATERAL
     const transaction = {
       to: contractAddress,
       data: encodedData,
       value: ethers.utils.parseEther("0.001"),
     };
-    console.log("transaction: ", transaction)
+    console.log("transaction: ", transaction);
 
-    const biconomyPaymaster = smartAccount.paymaster as IHybridPaymaster<SponsorUserOperationDto>;
-    console.log("biconomyPaymaster: ", biconomyPaymaster)
+    const biconomyPaymaster =
+      smartAccount.paymaster as IHybridPaymaster<SponsorUserOperationDto>;
+    console.log("biconomyPaymaster: ", biconomyPaymaster);
 
-    let paymasterServiceData: SponsorUserOperationDto = {mode: PaymasterMode.SPONSORED,};
-    console.log("paymasterServiceData: ", paymasterServiceData)
+    let paymasterServiceData: SponsorUserOperationDto = {
+      mode: PaymasterMode.SPONSORED,
+    };
+    console.log("paymasterServiceData: ", paymasterServiceData);
 
-    console.log("Building userOp...")
+    console.log("Building userOp...");
     let partialUserOp = await smartAccount.buildUserOp([transaction]);
 
-    console.log("Getting paymasterAndData...")
+    console.log("Getting paymasterAndData...");
     try {
       const paymasterAndDataResponse =
         await biconomyPaymaster.getPaymasterAndData(
