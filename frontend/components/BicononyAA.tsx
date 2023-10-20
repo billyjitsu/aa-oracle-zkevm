@@ -75,7 +75,7 @@ const calcStaToEth = (sta: number, price: number) => {
 const bundler: IBundler = new Bundler({
   //bundlerUrl: "https://bundler.biconomy.io/api/v2/80001/abc",
   bundlerUrl:
-    "https://bundler.biconomy.io/api/v2/1442/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44",
+    "https://bundler.biconomy.io/api/v2/{chain-id-here}/nJPK7B3ru.dd7f7861-190d-41bd-af80-6877f74b8f44",
   chainId: ChainId.POLYGON_ZKEVM_TESTNET, // POLYGON_ZKEVM_TESTNET  //POLYGON_MUMBAI
   entryPointAddress: DEFAULT_ENTRYPOINT_ADDRESS,
 });
@@ -160,14 +160,14 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     });
 
     let biconomySmartAccount = await BiconomySmartAccountV2.create({
-      chainId: ChainId.POLYGON_MUMBAI, // or any supported chain of your choice
+      chainId: ChainId.POLYGON_ZKEVM_TESTNET, // or any supported chain of your choice
       bundler: bundler,
       paymaster: paymaster,
       entryPointAddress: DEFAULT_ENTRYPOINT_ADDRESS,
       defaultValidationModule: ownerShipModule,
       activeValidationModule: ownerShipModule,
     });
-    console.log("owner: ", biconomySmartAccount.owner);
+    console.log("owner: ", biconomySmartAccount.getAccountAddress());
     console.log("address: ", await biconomySmartAccount.getAccountAddress());
     return biconomySmartAccount;
   }
@@ -178,8 +178,8 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     console.log("creating account...");
     const smartAccount = await createAccount();
 
-    const scwAddress = await smartAccount.getSmartAccountAddress(); // do we need this ?
-
+    const scwAddress = await smartAccount.getAccountAddress(); // do we need this ?
+ 
     // Create the contract object to good old ethers.js way.
     const contract = new ethers.Contract(contractAddress, abi, signer);
     console.log("contract: ", contract);
@@ -187,10 +187,16 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     //setup the contract for a depositCollateral call
     const fragment = contract.interface.getFunction("depositCollateral");
     const encodedData = contract.interface.encodeFunctionData(fragment);
-    console.log(encodedData);
+    console.log("encoded data:", encodedData);
 
     console.log("Building transaction...");
     // NEED TO FUND THE SMART ACCOUNT WITH ETH TO DEPOSIT COLLATERAL
+    const transferTransaction = {
+      to: scwAddress,
+      value: ethers.utils.parseEther("0.001"),
+    };
+    console.log("transferTransaction: ", transferTransaction);
+    
     const transaction = {
       to: contractAddress,
       data: encodedData,
@@ -208,7 +214,7 @@ const AccountAbstraction: React.FC<AccountAbstractionProps> = ({
     console.log("paymasterServiceData: ", paymasterServiceData);
 
     console.log("Building userOp...");
-    let partialUserOp = await smartAccount.buildUserOp([transaction]);
+    let partialUserOp = await smartAccount.buildUserOp([transferTransaction, transaction]);
 
     console.log("Getting paymasterAndData...");
     try {
